@@ -66,6 +66,12 @@
   .tab{flex:1; text-align:center; padding:9px; border-radius:10px; background:var(--card2);
     border:1px solid var(--line); cursor:pointer; font-size:14px;}
   .tab.on{background:var(--accent2); border-color:var(--accent); font-weight:700;}
+  /* groups */
+  .gname{font-weight:700; font-size:15px;}
+  .gmeta{font-size:12px; color:var(--sub); font-weight:400;}
+  .gwords{font-size:13px; color:var(--sub); margin-top:8px; line-height:1.7;}
+  .gwords b{color:var(--fg); font-weight:600;}
+  .gbtn{padding:7px 14px; font-size:13px;}
 </style>
 </head>
 <body>
@@ -111,6 +117,7 @@
 
     <div class="row" style="margin-top:4px;">
       <button class="btn primary" id="start">クイズ開始</button>
+      <button class="btn" id="groupsBtn">🧩 グループ</button>
       <button class="btn" id="listBtn">一覧</button>
     </div>
     <div class="center muted" style="margin-top:14px;">
@@ -149,6 +156,16 @@
     </div>
   </div>
 
+  <!-- ===== 語義グループ ===== -->
+  <div id="groups" class="hidden">
+    <div class="row between">
+      <button class="btn ghost" id="groupsBack">← 戻る</button>
+      <span class="pill" id="groupCount"></span>
+    </div>
+    <div class="muted" style="margin:10px 2px 0;">同じような意味の単語をまとめて学習できます。「クイズ ▶」でそのグループの語だけが出題されます（出題形式はホームの設定に従います）。</div>
+    <div id="groupsBody"></div>
+  </div>
+
   <!-- ===== 一覧 ===== -->
   <div id="list" class="hidden">
     <div class="row between">
@@ -161,6 +178,7 @@
 </div>
 
 <script src="words.js"></script>
+<script src="groups.js"></script>
 <script>
 const ALL = (window.WORDS||[]).slice().sort((a,b)=>a.w.localeCompare(b.w));
 document.getElementById('total').textContent = ALL.length;
@@ -210,7 +228,37 @@ document.getElementById('selAll').onclick=()=>{ selected=new Set(LKEYS); renderL
 document.getElementById('selNone').onclick=()=>{ selected=new Set(); renderLetters(); updateRange(); };
 
 /* ---- 画面切替 ---- */
-function show(id){ ['home','quiz','result','list'].forEach(s=>document.getElementById(s).classList.toggle('hidden', s!==id)); window.scrollTo(0,0); }
+function show(id){ ['home','quiz','result','list','groups'].forEach(s=>document.getElementById(s).classList.toggle('hidden', s!==id)); window.scrollTo(0,0); }
+
+/* ---- 語義グループ：収録語に存在する語だけに正規化 ---- */
+const BYWORD = {}; ALL.forEach(d=>BYWORD[d.w]=d);
+const GROUPS = (window.GROUPS||[])
+  .map(g=>({name:g.name, words:g.members.filter(w=>BYWORD[w])}))
+  .filter(g=>g.words.length>=2);
+
+function renderGroups(){
+  document.getElementById('groupCount').textContent=`${GROUPS.length}グループ`;
+  document.getElementById('groupsBody').innerHTML = GROUPS.map((g,i)=>{
+    const learned=g.words.filter(w=>mast(w)>=3).length;
+    const words=g.words.map(w=>`<b>${w}</b>=${BYWORD[w].ja.split(/[／、,\/]/)[0]}`).join(' ／ ');
+    return `<div class="card">
+      <div class="row between">
+        <span class="gname">${g.name} <span class="gmeta">${g.words.length}語${learned?`・済${learned}`:''}</span></span>
+        <button class="btn gbtn" onclick="studyGroup(${i})">クイズ ▶</button>
+      </div>
+      <div class="gwords">${words}</div>
+    </div>`;
+  }).join('');
+}
+function studyGroup(i){
+  const g=GROUPS[i]; if(!g) return;
+  mode=document.getElementById('mode').value;
+  pool=shuffle(g.words.map(w=>BYWORD[w]));
+  qi=0; score=0; wrong=[];
+  show('quiz'); renderQ();
+}
+document.getElementById('groupsBtn').onclick=()=>{ show('groups'); renderGroups(); };
+document.getElementById('groupsBack').onclick=()=>{ updateRange(); show('home'); };
 
 /* ---- クイズ ---- */
 let pool=[], qi=0, score=0, wrong=[], mode='w2ja';
