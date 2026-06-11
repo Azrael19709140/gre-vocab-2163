@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>GRE単語クイズ（書籍2163語）</title>
+<style>
+  :root{
+    --bg:#10131a; --card:#1a1f2b; --card2:#222838; --line:#2c3346;
+    --fg:#e8ecf4; --sub:#9aa3b8; --accent:#5b8cff; --accent2:#3a6bdd;
+    --ok:#2ecc71; --ng:#ff5d6c; --warn:#ffb454;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    line-height:1.5; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);}
+  .wrap{max-width:680px; margin:0 auto; padding:16px;}
+  h1{font-size:19px; margin:6px 0 2px; letter-spacing:.02em;}
+  .muted{color:var(--sub); font-size:13px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin:12px 0;}
+  .sec-title{font-size:13px; color:var(--sub); margin:0 0 8px; font-weight:600;}
+  /* letter grid */
+  .letters{display:grid; grid-template-columns:repeat(auto-fill,minmax(58px,1fr)); gap:8px;}
+  .lbtn{background:var(--card2); border:1px solid var(--line); border-radius:10px;
+    color:var(--fg); padding:8px 4px; text-align:center; cursor:pointer; transition:.12s;}
+  .lbtn:active{transform:scale(.96);}
+  .lbtn.sel{background:var(--accent2); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset;}
+  .lbtn .ch{font-size:18px; font-weight:700; display:block;}
+  .lbtn .cnt{font-size:11px; color:var(--sub);}
+  .lbtn.sel .cnt{color:#dce6ff;}
+  .lbtn .done{font-size:10px; color:var(--ok);}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .row.between{justify-content:space-between;}
+  select,.btn{font-size:15px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card2); color:var(--fg); padding:10px 12px;}
+  .btn{cursor:pointer; transition:.12s;}
+  .btn:active{transform:scale(.97);}
+  .btn.primary{background:var(--accent2); border-color:var(--accent); font-weight:700; flex:1;}
+  .btn.ghost{background:transparent;}
+  .btn:disabled{opacity:.4;}
+  .pill{font-size:12px; color:var(--sub); background:var(--card2); border:1px solid var(--line);
+    border-radius:999px; padding:3px 10px;}
+  /* quiz */
+  .progress{height:6px; background:var(--card2); border-radius:999px; overflow:hidden; margin:4px 0 14px;}
+  .progress>i{display:block; height:100%; background:var(--accent); width:0; transition:.25s;}
+  .qword{font-size:30px; font-weight:800; text-align:center; margin:18px 0; word-break:break-word;}
+  .qsub{text-align:center; color:var(--sub); font-size:13px; margin-top:-10px; margin-bottom:14px;}
+  .choices{display:flex; flex-direction:column; gap:10px;}
+  .choice{text-align:left; padding:14px; font-size:16px; line-height:1.4;}
+  .choice.ok{background:rgba(46,204,113,.16); border-color:var(--ok);}
+  .choice.ng{background:rgba(255,93,108,.16); border-color:var(--ng);}
+  .choice:disabled{opacity:1;}
+  .qfoot{display:flex; justify-content:space-between; align-items:center; margin-top:16px;}
+  .next{padding:12px 22px;}
+  /* list */
+  .item{display:flex; justify-content:space-between; gap:12px; padding:11px 4px; border-bottom:1px solid var(--line);}
+  .item:last-child{border-bottom:none;}
+  .item .w{font-weight:700;}
+  .item .ja{color:var(--sub); text-align:right; font-size:14px;}
+  .item .m{font-size:11px; padding:1px 7px; border-radius:999px; align-self:center; white-space:nowrap;}
+  .hidden{display:none;}
+  .big{font-size:40px; font-weight:800; text-align:center; margin:6px 0;}
+  .center{text-align:center;}
+  a.link{color:var(--accent); text-decoration:none;}
+  .tabs{display:flex; gap:8px; margin-bottom:4px;}
+  .tab{flex:1; text-align:center; padding:9px; border-radius:10px; background:var(--card2);
+    border:1px solid var(--line); cursor:pointer; font-size:14px;}
+  .tab.on{background:var(--accent2); border-color:var(--accent); font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== ホーム ===== -->
+  <div id="home">
+    <h1>GRE単語クイズ</h1>
+    <div class="muted">書籍収録 <b id="total"></b>語 ・ 英語定義は書籍を参照</div>
+
+    <div class="card">
+      <div class="sec-title">出題範囲（頭文字を選択）</div>
+      <div class="row between" style="margin-bottom:10px;">
+        <button class="btn ghost" id="selAll">すべて選択</button>
+        <button class="btn ghost" id="selNone">クリア</button>
+        <span class="pill" id="rangeInfo">0語</span>
+      </div>
+      <div class="letters" id="letters"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">設定</div>
+      <div class="row" style="gap:10px;">
+        <label class="muted" style="flex:1;">出題形式<br>
+          <select id="mode" style="width:100%; margin-top:4px;">
+            <option value="w2ja">英単語 → 意味（日本語）</option>
+            <option value="ja2w">意味（日本語） → 英単語</option>
+          </select>
+        </label>
+        <label class="muted" style="flex:1;">問題数<br>
+          <select id="count" style="width:100%; margin-top:4px;">
+            <option value="10">10問</option>
+            <option value="20" selected>20問</option>
+            <option value="40">40問</option>
+            <option value="0">全部</option>
+          </select>
+        </label>
+      </div>
+      <label class="muted row" style="margin-top:10px; gap:8px; align-items:center;">
+        <input type="checkbox" id="weakFirst"> 苦手・未学習を優先して出題
+      </label>
+    </div>
+
+    <div class="row" style="margin-top:4px;">
+      <button class="btn primary" id="start">クイズ開始</button>
+      <button class="btn" id="listBtn">一覧</button>
+    </div>
+    <div class="center muted" style="margin-top:14px;">
+      進捗は端末に保存されます ・ <a href="#" class="link" id="resetBtn">進捗リセット</a>
+    </div>
+  </div>
+
+  <!-- ===== クイズ ===== -->
+  <div id="quiz" class="hidden">
+    <div class="row between">
+      <button class="btn ghost" id="quitQuiz">← 中断</button>
+      <span class="pill" id="qcount"></span>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+    <div id="qsub" class="qsub"></div>
+    <div class="qword" id="qword"></div>
+    <div class="choices" id="choices"></div>
+    <div class="qfoot">
+      <span class="muted" id="scoreLbl"></span>
+      <button class="btn primary next hidden" id="nextBtn">次へ →</button>
+    </div>
+  </div>
+
+  <!-- ===== 結果 ===== -->
+  <div id="result" class="hidden">
+    <h1 class="center">結果</h1>
+    <div class="big" id="resScore"></div>
+    <div class="center muted" id="resRate"></div>
+    <div class="card" id="wrongCard">
+      <div class="sec-title">間違えた単語</div>
+      <div id="wrongList"></div>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <button class="btn primary" id="retryWrong">間違いだけ復習</button>
+      <button class="btn" id="backHome">ホーム</button>
+    </div>
+  </div>
+
+  <!-- ===== 一覧 ===== -->
+  <div id="list" class="hidden">
+    <div class="row between">
+      <button class="btn ghost" id="listBack">← 戻る</button>
+      <input id="search" placeholder="検索…" style="flex:1; max-width:200px; padding:8px 10px; border-radius:10px; border:1px solid var(--line); background:var(--card2); color:var(--fg);">
+    </div>
+    <div class="card"><div id="listBody"></div></div>
+  </div>
+
+</div>
+
+<script src="words.js"></script>
+<script>
+const ALL = (window.WORDS||[]).slice().sort((a,b)=>a.w.localeCompare(b.w));
+document.getElementById('total').textContent = ALL.length;
+
+/* ---- 進捗（localStorage）。状態: 0未学習 1苦手 2学習中 3習得 ---- */
+const LS='gre_pic_mastery_v1';
+let MAST = {}; try{ MAST = JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ MAST={}; }
+function saveMast(){ try{ localStorage.setItem(LS, JSON.stringify(MAST)); }catch(e){} }
+function mast(w){ return MAST[w]||0; }
+function bump(w, right){
+  let v = mast(w);
+  v = right ? Math.min(3, (v<2?2:v)+1) : 1;   // 正解→学習中/習得へ、不正解→苦手
+  MAST[w]=v; saveMast();
+}
+const MLABEL=['未','苦','中','済']; const MCOL=['#5a6175','#ff5d6c','#ffb454','#2ecc71'];
+
+/* ---- 頭文字グルーピング ---- */
+const LETTERS = {};
+ALL.forEach(d=>{ const c=d.w[0].toUpperCase(); (LETTERS[c]=LETTERS[c]||[]).push(d); });
+const LKEYS = Object.keys(LETTERS).sort();
+let selected = new Set(LKEYS);   // 既定で全選択
+
+function learnedCount(arr){ return arr.filter(d=>mast(d.w)>=3).length; }
+
+function renderLetters(){
+  const box=document.getElementById('letters'); box.innerHTML='';
+  LKEYS.forEach(k=>{
+    const arr=LETTERS[k]; const done=learnedCount(arr);
+    const el=document.createElement('div');
+    el.className='lbtn'+(selected.has(k)?' sel':'');
+    el.innerHTML=`<span class="ch">${k}</span><span class="cnt">${arr.length}語</span>`+
+                 (done?`<span class="done">済${done}</span>`:'');
+    el.onclick=()=>{ selected.has(k)?selected.delete(k):selected.add(k); renderLetters(); updateRange(); };
+    box.appendChild(el);
+  });
+}
+function selectedWords(){
+  let a=[]; LKEYS.forEach(k=>{ if(selected.has(k)) a=a.concat(LETTERS[k]); });
+  return a;
+}
+function updateRange(){
+  const n=selectedWords().length;
+  document.getElementById('rangeInfo').textContent = `${selected.size}文字 / ${n}語`;
+  document.getElementById('start').disabled = n<4;
+}
+document.getElementById('selAll').onclick=()=>{ selected=new Set(LKEYS); renderLetters(); updateRange(); };
+document.getElementById('selNone').onclick=()=>{ selected=new Set(); renderLetters(); updateRange(); };
+
+/* ---- 画面切替 ---- */
+function show(id){ ['home','quiz','result','list'].forEach(s=>document.getElementById(s).classList.toggle('hidden', s!==id)); window.scrollTo(0,0); }
+
+/* ---- クイズ ---- */
+let pool=[], qi=0, score=0, wrong=[], mode='w2ja';
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function startQuiz(reviewList){
+  mode=document.getElementById('mode').value;
+  let base = reviewList || selectedWords();
+  if(!reviewList && document.getElementById('weakFirst').checked){
+    base = base.slice().sort((a,b)=> (mast(a.w)===1?-2:mast(a.w)) - (mast(b.w)===1?-2:mast(b.w)) );
+    // 苦手(1)→未学習(0)→学習中(2)→習得(3) の優先で並べてから前方を採用
+    const weak = base.filter(d=>mast(d.w)<=1), rest=base.filter(d=>mast(d.w)>=2);
+    base = shuffle(weak).concat(shuffle(rest));
+  } else {
+    base = shuffle(base);
+  }
+  const cnt = parseInt(document.getElementById('count').value,10);
+  pool = (cnt>0)? base.slice(0,cnt) : base;
+  qi=0; score=0; wrong=[];
+  show('quiz'); renderQ();
+}
+
+function renderQ(){
+  const it=pool[qi];
+  document.getElementById('qcount').textContent=`${qi+1} / ${pool.length}`;
+  document.getElementById('bar').style.width=`${qi/pool.length*100}%`;
+  document.getElementById('scoreLbl').textContent=`正解 ${score}`;
+  document.getElementById('nextBtn').classList.add('hidden');
+
+  const askWord = (mode==='w2ja');
+  document.getElementById('qsub').textContent = askWord? '意味を選択' : '英単語を選択';
+  document.getElementById('qword').textContent = askWord? it.w : it.ja;
+
+  // 選択肢：同プールから誤答3つ（重複表示を避ける）
+  const others=[]; const used=new Set([askWord?it.ja:it.w]);
+  const cand=shuffle(ALL.filter(d=>d.w!==it.w));
+  for(const d of cand){ const v=askWord?d.ja:d.w; if(used.has(v))continue; used.add(v); others.push(d); if(others.length>=3)break; }
+  const opts=shuffle(others.concat(it));
+
+  const box=document.getElementById('choices'); box.innerHTML='';
+  opts.forEach(d=>{
+    const b=document.createElement('button'); b.className='btn choice';
+    b.textContent = askWord? d.ja : d.w;
+    b.onclick=()=>answer(b, d, it, opts);
+    box.appendChild(b);
+  });
+}
+function answer(btn, chosen, it, opts){
+  const right = (chosen.w===it.w);
+  const askWord=(mode==='w2ja');
+  bump(it.w, right);
+  if(right) score++; else wrong.push(it);
+  // 全ボタン無効化＋正誤色付け
+  [...document.getElementById('choices').children].forEach(b=>{
+    b.disabled=true;
+    if(b.textContent === (askWord? it.ja : it.w)) b.classList.add('ok');
+  });
+  if(!right) btn.classList.add('ng');
+  document.getElementById('scoreLbl').textContent=`正解 ${score}`;
+  const nb=document.getElementById('nextBtn'); nb.classList.remove('hidden');
+  nb.textContent = (qi+1<pool.length)? '次へ →' : '結果を見る';
+  nb.focus();
+}
+document.getElementById('nextBtn').onclick=()=>{ qi++; (qi<pool.length)? renderQ() : finish(); };
+
+function finish(){
+  show('result');
+  document.getElementById('bar').style.width='100%';
+  document.getElementById('resScore').textContent=`${score} / ${pool.length}`;
+  const rate=pool.length? Math.round(score/pool.length*100):0;
+  document.getElementById('resRate').textContent=`正答率 ${rate}%`;
+  const wc=document.getElementById('wrongCard');
+  wc.classList.toggle('hidden', wrong.length===0);
+  document.getElementById('wrongList').innerHTML = wrong.map(d=>
+    `<div class="item"><span class="w">${d.w}</span><span class="ja">${d.ja}</span></div>`).join('');
+  document.getElementById('retryWrong').disabled = wrong.length===0;
+  renderLetters();
+}
+document.getElementById('retryWrong').onclick=()=>{ if(wrong.length) startQuiz(wrong.slice()); };
+document.getElementById('backHome').onclick=()=>{ updateRange(); show('home'); };
+document.getElementById('quitQuiz').onclick=()=>{ updateRange(); show('home'); };
+document.getElementById('start').onclick=()=>startQuiz(null);
+
+/* ---- 一覧 ---- */
+function renderList(){
+  const q=(document.getElementById('search').value||'').trim().toLowerCase();
+  let arr=selectedWords();
+  if(q) arr=arr.filter(d=>d.w.toLowerCase().includes(q)||d.ja.includes(q));
+  document.getElementById('listBody').innerHTML = arr.map(d=>{
+    const m=mast(d.w);
+    return `<div class="item"><span class="w">${d.w}</span><span class="ja">${d.ja}</span>`+
+           `<span class="m" style="background:${MCOL[m]}22;color:${MCOL[m]}">${MLABEL[m]}</span></div>`;
+  }).join('') || '<div class="muted center">該当なし</div>';
+}
+document.getElementById('listBtn').onclick=()=>{ show('list'); renderList(); };
+document.getElementById('listBack').onclick=()=>{ updateRange(); show('home'); };
+document.getElementById('search').oninput=renderList;
+
+/* ---- リセット ---- */
+document.getElementById('resetBtn').onclick=(e)=>{ e.preventDefault();
+  if(confirm('学習進捗をすべて消去しますか？')){ MAST={}; saveMast(); renderLetters(); }
+};
+
+/* ---- 初期化 ---- */
+renderLetters(); updateRange();
+</script>
+</body>
+</html>
